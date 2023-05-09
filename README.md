@@ -16,3 +16,5 @@ The project is experiments-oriented, and the student will focus on  implementing
 Bigoli at. al work proposes spherical convolution but only uses it for image compression. On the other hand, the current neural video compression focuses on 2D video using 2D convolutions. So, the idea is to replace 2D convolution steps in current neural video compression with spherical convolutions for 360 videos.
 
 The suggested steps are: to implement spherical convolution; set up one reference method neural video compression (you can use open code as [1]); replace 2D convolution steps in this compression for the spherical one; then compare results with compression metrics against the reference compression.
+
+The vimeo-90k setuplet dataset could be found at http://data.csail.mit.edu/tofu/dataset/vimeo_septuplet.zip.
