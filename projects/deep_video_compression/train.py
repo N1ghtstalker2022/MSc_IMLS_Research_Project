@@ -4,7 +4,6 @@
 # LICENSE file in the root directory of this source tree.
 
 from pathlib import Path
-
 from neuralcompression.functional import optical_flow_to_color
 import hydra
 import numpy as np
@@ -16,7 +15,6 @@ from dvc_module import DvcModule
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
-
 from neuralcompression.models import DVC
 
 
@@ -166,8 +164,10 @@ def main(cfg: DictConfig):
     image_logger = WandbImageCallback(log_images)
 
     # run through each stage and optimize
-    for stage in sorted(cfg.training_stages.keys()):
-        model = run_training_stage(stage, root, model, data, logger, image_logger, cfg)
+    # for stage in sorted(cfg.training_stages.keys()):
+    #     model = run_training_stage(stage, root, model, data, logger, image_logger, cfg)
+    total_stage = sorted(cfg.training_stages.keys())[-1]
+    run_training_stage(total_stage, root, model, data, logger, image_logger, cfg)
 
 
 if __name__ == "__main__":
