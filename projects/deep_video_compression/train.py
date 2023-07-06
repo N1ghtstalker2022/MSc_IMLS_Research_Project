@@ -54,9 +54,7 @@ class WandbImageCallback(pl.Callback):
                 mosaic = torch.cat(list(mosaic), dim=-2)
                 if key == "flow":
                     #        original             mosaic = _optical_flow_to_color.optical_flow_to_color(
-                    mosaic = optical_flow_to_color(
-                        mosaic.unsqueeze(0)
-                    )[0]
+                    mosaic = optical_flow_to_color(mosaic.unsqueeze(0))[0]
                 mosaic = torch.clip(mosaic, min=0, max=1.0)
                 trainer.logger.experiment.log(
                     {
@@ -66,9 +64,9 @@ class WandbImageCallback(pl.Callback):
                 )
 
     def on_validation_end(self, trainer, pl_module):
-        '''PyTorch Lightning has a specific behavior
+        """PyTorch Lightning has a specific behavior
         where it also runs a round of validation at the very beginning of training,
-        before the first training epoch. '''
+        before the first training epoch."""
         image_dict = {}
         batch = self.batch.to(device=pl_module.device, dtype=pl_module.dtype)
         batch, _ = pl_module.compress_iframe(batch)  # bpp_total w/o grads
@@ -170,8 +168,6 @@ def main(cfg: DictConfig):
     # run through each stage and optimize
     for stage in sorted(cfg.training_stages.keys()):
         model = run_training_stage(stage, root, model, data, logger, image_logger, cfg)
-
-
 
 
 if __name__ == "__main__":

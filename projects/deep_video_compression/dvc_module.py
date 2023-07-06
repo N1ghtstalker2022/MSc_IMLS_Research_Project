@@ -109,7 +109,7 @@ class DvcModule(LightningModule):
 
         def entropy_fn(probabilities, reduction_factor):
             return (
-                #TODO: study this
+                # TODO: study this
                 ncF.information_content(probabilities, reduction="sum")
                 / reduction_factor
             )

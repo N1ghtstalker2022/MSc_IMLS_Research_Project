@@ -2,6 +2,7 @@ import cv2
 import os
 import shutil
 
+
 # Function to convert video to images
 def convert_video_to_images(video_path, output_folder):
     # Create the output folder if it doesn't exist
@@ -33,15 +34,20 @@ def convert_video_to_images(video_path, output_folder):
 
 # Define a function to extract the numerical part from each string
 def extract_number(string):
-    return int(string.lstrip('img').rstrip('.png'))
+    return int(string.lstrip("img").rstrip(".png"))
+
 
 def create_frame_groups():
-    frames_folder = "/scratch/zczqyc4/360-videos"  # Path to the folder containing the frames
+    frames_folder = (
+        "/scratch/zczqyc4/360-videos"  # Path to the folder containing the frames
+    )
     group_size = 7
     output_folder = "/scratch/zczqyc4/360-videos-grouped"
 
     items = os.listdir(frames_folder)
-    frame_directories = [item for item in items if os.path.isdir(os.path.join(frames_folder, item))]
+    frame_directories = [
+        item for item in items if os.path.isdir(os.path.join(frames_folder, item))
+    ]
 
     frame_directories.sort()  # Sort frames in ascending order
     for frame_directory in frame_directories:
@@ -54,11 +60,15 @@ def create_frame_groups():
 
         for i in range(len(cur_frames) - group_size + 1):
             # Get the current group of frames
-            group = cur_frames[i: i + group_size]
+            group = cur_frames[i : i + group_size]
 
             # Create a folder for the group
-            if os.path.exists(os.path.join(output_folder, frame_directory, f"group{i + 1}")):
-                print(f"Folder {os.path.join(output_folder, frame_directory, f'group{i + 1}')} already exists.")
+            if os.path.exists(
+                os.path.join(output_folder, frame_directory, f"group{i + 1}")
+            ):
+                print(
+                    f"Folder {os.path.join(output_folder, frame_directory, f'group{i + 1}')} already exists."
+                )
                 continue
             group_folder = os.path.join(output_folder, frame_directory, f"group{i + 1}")
             os.makedirs(group_folder)
@@ -69,6 +79,7 @@ def create_frame_groups():
                 new_frame_name = f"img{j + 1}.png"  # New name for the frame
                 new_frame_path = os.path.join(group_folder, new_frame_name)
                 shutil.copy(frame_path, new_frame_path)
+
 
 if __name__ == "__main__":
     # # Specify the folder path containing the videos
