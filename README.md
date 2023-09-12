@@ -1,5 +1,5 @@
-# MSc IMLS Research Project
-# **Spherical  Convolutions for Neural Compression of 360-degree Videos**
+# MSc Research Project
+# **On-the-Sphere Residual Learning for Neural Compression of 360-degree Videos**
 
 This  project focus on the synergy of two current learning methods for video. The  first is neural video compression[1], which improves traditional one certain  steps. Traditional compression captures motion between consecutive frames and  performs linear transform and quantisation methods over the residual  information in each frame to be encoded. Differently, neural video  compression uses methods such as convolutional neural networks (CNNs) to  capture motion and encoder-decoder architectures to propose to compress  residual data. The second is spherical convolutional neural networks (CNNs)  for 360-degree videos. The current compression of such 360-degree videos  intensively relies on 2D planar projection and suffers from its distortion  (e.g., poles are more sampled than equator). Therefore, neural compression  using CNNs, which focus on 2D convolution over planar data, is damaged when  applied to 360 videos. Some authors[3] have evaluated the benefit of using  spherical convolutions in learning tasks for 360 images.          
 
