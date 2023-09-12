@@ -1,0 +1,11 @@
+python ./generate_healpix_samples_and_split_to_train_and_test.py -i ./oslo_data/images_equirectangular -e png -r 10 -s -o ./oslo_data/Healpix_res_10 -t 0.8 -v 0.1
+
+python ./generate_and_save_healpix_oslo_struct.py -o /scratch/zczqyc4/neighbor_structure -hr 10 -pr 8
+python ./generate_and_save_healpix_oslo_struct.py -o /scratch/zczqyc4/neighbor_structure -hr 9 -pr 7
+python ./generate_and_save_healpix_oslo_struct.py -o /scratch/zczqyc4/neighbor_structure -hr 8 -pr 6
+python ./generate_and_save_healpix_oslo_struct.py -o /scratch/zczqyc4/neighbor_structure -hr 7 -pr 5
+python ./generate_and_save_healpix_oslo_struct.py -o /scratch/zczqyc4/neighbor_structure -hr 6 -pr 4
+python ./generate_and_save_healpix_oslo_struct.py -o /scratch/zczqyc4/neighbor_structure -hr 5 -pr 3
+python ./generate_and_save_healpix_oslo_struct.py -o /scratch/zczqyc4/neighbor_structure -hr 4 -pr 2
+python ./generate_and_save_healpix_oslo_struct.py -o /scratch/zczqyc4/neighbor_structure -hr 3 -pr 1
+python ./generate_and_save_healpix_oslo_struct.py -o /scratch/zczqyc4/neighbor_structure -hr 2 -pr 0

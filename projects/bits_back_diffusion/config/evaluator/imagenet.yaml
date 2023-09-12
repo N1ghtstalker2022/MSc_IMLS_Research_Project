@@ -1,3 +1,0 @@
-clip_denoised: true
-num_samples: 50000
-model_path: outputs/pretrained/imagenet_vlb.pt

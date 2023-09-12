@@ -2,20 +2,29 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
+import sys
 
-from pathlib import Path
-from neuralcompression.functional import optical_flow_to_color
 import hydra
 import numpy as np
+import os
 import pytorch_lightning as pl
 import torch
 import wandb
-from data_module import Vimeo90kSeptupletLightning
-from dvc_module import DvcModule
 from omegaconf import DictConfig, OmegaConf
+from pathlib import Path
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
+
+from data_module import VRHM48VideoLightning
+from dvc_module import DvcModule
+from neuralcompression.functional import optical_flow_to_color
 from neuralcompression.models import DVC
+# from neuralcompression.models.deep_video_compression import DVCResidualEncoder, DVCResidualDecoder
+from projects.deep_video_compression.preprocessing import healpix_sdpa_struct_loader
+
+sys.path.append("../..")
+
+from spherical_models import SphereFactorizedPrior
 
 
 class WandbImageCallback(pl.Callback):
@@ -51,8 +60,8 @@ class WandbImageCallback(pl.Callback):
                 mosaic = torch.cat(image_dict[key], dim=-1)
                 mosaic = torch.cat(list(mosaic), dim=-2)
                 if key == "flow":
-                    #        original             mosaic = _optical_flow_to_color.optical_flow_to_color(
                     mosaic = optical_flow_to_color(mosaic.unsqueeze(0))[0]
+                # TODO: find out why there is a clip operation here
                 mosaic = torch.clip(mosaic, min=0, max=1.0)
                 trainer.logger.experiment.log(
                     {
@@ -60,21 +69,59 @@ class WandbImageCallback(pl.Callback):
                         "global_step": global_step,
                     }
                 )
-
+    # TODO: validation 不加噪声
     def on_validation_end(self, trainer, pl_module):
-        """PyTorch Lightning has a specific behavior
-        where it also runs a round of validation at the very beginning of training,
-        before the first training epoch."""
         image_dict = {}
         batch = self.batch.to(device=pl_module.device, dtype=pl_module.dtype)
         batch, _ = pl_module.compress_iframe(batch)  # bpp_total w/o grads
         image1 = batch[:, 0]
-        for i in range(pl_module.num_pframes):
-            image2 = batch[:, i + 1]
-            _, images = pl_module.model.compute_batch_loss(image1, image2)
-            image1 = images.image2_est  # images are detached
+        if pl_module.on_sphere_learning and (pl_module.training_stage == "4_total_2frame" or pl_module.training_stage == "5_total"):
+            for i in range(pl_module.num_pframes):
+                image2 = batch[:, i + 1]
 
-            image_dict = self.append_images(image_dict, images)
+                # Number of patches taken from each sample each time
+                list_patch_ids = pl_module.generate_random_patches(pl_module.healpix_resolution_patch_level,
+                                                                   ) if not pl_module.noPatching else [0]
+                # list_patch_ids = [170]
+                # print(list_patch_ids)
+
+                for patch_id in list_patch_ids:
+
+                    dict_index = dict()
+                    dict_weight = dict()
+                    for r in pl_module.list_res:
+                        if pl_module.struct_loader.__class__.__name__ == "HealpixSdpaStructLoader":
+                            if pl_module.noPatching:
+                                dict_index[r], dict_weight[r], _ = pl_module.struct_loader.getStruct(sampling_res=r, num_hops=1,
+                                                                                           patch_res=None,
+                                                                                           patch_id=patch_id)
+                            else:
+                                dict_index[r], dict_weight[r], _, _, _ = pl_module.struct_loader.getStruct(sampling_res=r[0],
+                                                                                                 num_hops=1,
+                                                                                                 patch_res=r[1],
+                                                                                                 patch_id=patch_id)
+                        # else:
+                        #     dict_index[r], dict_weight[r], _, _ = self.struct_loader.getGraph(
+                        #         sampling_res=r if self.noPatching else r[0],
+                        #         patch_res=None if self.noPatching else r[1],
+                        #         num_hops=0, patch_id=patch_id)
+
+                    _, images = pl_module.model.compute_batch_loss(image1, image2, dict_index, dict_weight,
+                                                                   pl_module.sample_res, pl_module.patch_res, patch_id,
+                                                                   pl_module.nPix_per_patch)
+
+                # _, images = pl_module.model.compute_batch_loss(image1, image2)
+
+                image1 = images.image2_est  # images are detached
+
+                image_dict = self.append_images(image_dict, images)
+        else:
+            for i in range(pl_module.num_pframes):
+                image2 = batch[:, i + 1]
+                _, images = pl_module.model.compute_batch_loss(image1, image2)
+                image1 = images.image2_est  # images are detached
+
+                image_dict = self.append_images(image_dict, images)
 
         self.log_images(
             trainer,
@@ -115,10 +162,20 @@ def run_training_stage(stage, root, model, data, logger, image_logger, cfg):
 
     save_dir.mkdir(exist_ok=True, parents=True)
     last_checkpoint = save_dir / "last.ckpt"
+
     if not last_checkpoint.exists() or cfg.checkpoint.overwrite is True:
         last_checkpoint = None
 
-    lightning_model = DvcModule(model, **merge_configs(cfg.module, stage_cfg.module))
+    print("Last Checkpoint:", last_checkpoint)
+
+    struct_loader = healpix_sdpa_struct_loader.HealpixSdpaStructLoader(weight_type='identity',
+                                                                       use_geodesic=True,
+                                                                       use_4connectivity=False,
+                                                                       normalization_method='non',
+                                                                       cutGraphForPatchOutside=True,
+                                                                       load_save_folder='/scratch/zczqyc4/neighbor_structure')
+
+    lightning_model = DvcModule(model, struct_loader, **merge_configs(cfg.module, stage_cfg.module), patching=False)
 
     trainer = pl.Trainer(
         **merge_configs(cfg.trainer, stage_cfg.trainer),
@@ -140,13 +197,22 @@ def run_training_stage(stage, root, model, data, logger, image_logger, cfg):
 def main(cfg: DictConfig):
     root = Path(cfg.logging.save_root)  # if relative, uses Hydra outputs dir
     model = DVC(**cfg.model)
+    # model = DVC(**cfg.model,residual_network=SphereFactorizedPrior(64, 128))
     logger = WandbLogger(
         save_dir=str(root.absolute()),
-        project="DVC",
+        # project="DVC",
+        project="DVC_VRHM48",
+        # project="DVC_Spherical_no_patching_lambda=2048_more_steps_test",
+        # project="DVC_Spherical_patching",
         config=OmegaConf.to_container(cfg),  # saves the Hydra config to wandb
+        id="k916hof7" # specify run_id of a wandb project to resume training
     )
-
-    data = Vimeo90kSeptupletLightning(
+    # data = Vimeo90kSeptupletLightning(
+    #     frames_per_group=7,
+    #     **cfg.data,
+    #     pin_memory=cfg.ngpu != 0,
+    # )
+    data = VRHM48VideoLightning(
         frames_per_group=7,
         **cfg.data,
         pin_memory=cfg.ngpu != 0,
@@ -155,19 +221,27 @@ def main(cfg: DictConfig):
     # set up image logging
     rng = np.random.default_rng(cfg.logging.image_seed)
     data.setup()
-    # the length of the validation dataset is 7 times larger than the number of training set. dimension: (batch_size, 3, w, h)
     val_dataset = data.val_dataset
-    # randomly select 8 images from the validation dataset
     log_image_indices = rng.permutation(len(val_dataset))[: cfg.logging.num_log_images]
     log_images = torch.stack([val_dataset[ind] for ind in log_image_indices])
-
     image_logger = WandbImageCallback(log_images)
 
     # run through each stage and optimize
-    # for stage in sorted(cfg.training_stages.keys()):
-    #     model = run_training_stage(stage, root, model, data, logger, image_logger, cfg)
-    total_stage = sorted(cfg.training_stages.keys())[-1]
-    run_training_stage(total_stage, root, model, data, logger, image_logger, cfg)
+    for stage in sorted(cfg.training_stages.keys()):
+        model = run_training_stage(stage, root, model, data, logger, image_logger, cfg)
+
+    # stage = sorted(cfg.training_stages.keys())[0]
+    # model = run_training_stage(stage, root, model, data, logger, image_logger, cfg)
+    #
+    # stage = sorted(cfg.training_stages.keys())[1]
+    # model = run_training_stage(stage, root, model, data, logger, image_logger, cfg)
+    #
+    # stage = sorted(cfg.training_stages.keys())[2]
+    # model = run_training_stage(stage, root, model, data, logger, image_logger, cfg)
+    #
+    # stage = sorted(cfg.training_stages.keys())[3]
+    # model = run_training_stage(stage, root, model, data, logger, image_logger, cfg)
+
 
 
 if __name__ == "__main__":

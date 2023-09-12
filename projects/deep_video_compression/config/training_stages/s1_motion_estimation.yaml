@@ -8,6 +8,7 @@ s1_motion_estimation:
     learning_rate: 1e-4
 
   trainer:
-# original:   max_steps: 2000
-    max_epochs: 1
+    # original:   max_steps: 2000
+#        max_epochs: 1
+    max_steps: 2000
 

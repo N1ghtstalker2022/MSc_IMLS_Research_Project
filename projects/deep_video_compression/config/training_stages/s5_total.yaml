@@ -2,7 +2,7 @@ s5_total:
   save_dir: null # can put previous run here and it will be loaded
 
   module:
-    num_pframes: 6
+    num_pframes: 1
     training_stage: "5_total"
     learning_rate: 1e-4
     lr_scheduler_params:
@@ -10,6 +10,6 @@ s5_total:
       gamma: 0.1
 
   trainer:
-#    max_steps: 500000
-    max_epochs: 100
+    max_steps: 5000
+#    max_epochs: 1
 

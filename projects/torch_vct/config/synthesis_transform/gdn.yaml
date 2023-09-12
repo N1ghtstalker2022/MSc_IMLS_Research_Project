@@ -1,3 +1,0 @@
-_target_: neural.transforms.ConvGDNSynthesis
-network_channels: 128
-compression_channels: 192 

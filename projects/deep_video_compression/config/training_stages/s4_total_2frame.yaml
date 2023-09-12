@@ -7,5 +7,5 @@ s4_total_2frame:
     learning_rate: 1e-4
 
   trainer:
-#    max_steps: 60000
-    max_epochs: 1
+    max_steps: 4000
+#    max_epochs: 1

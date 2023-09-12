@@ -91,7 +91,7 @@ class Vimeo90kSeptuplet(Dataset):
         if folder_list is not None:
             self.folder_list = folder_list
         else:
-            if split not in ["train", "test", "small_train"]:
+            if split not in ["train", "test", "small_train", "small_test", "for_test"]:
                 raise ValueError(
                     "split must take on values of either 'train' or 'test', "
                     f"not {split}"
